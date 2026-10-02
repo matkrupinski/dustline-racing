@@ -29,7 +29,8 @@ export class HUD {
     const gear = displayedGear(vehicle);
     const reverse = gear === 'R';
     const revs = mph < 0.5 ? 0 : Math.min(7, 1 + Math.floor((mph % 17) / 17 * 7));
-    this.speed.textContent = Math.round(mph);
+    // Speed display is metric; preserve the existing gearbox/rev thresholds.
+    this.speed.textContent = Math.round(vehicle.speed * 3.6);
     this.gear.textContent = reverse ? 'R' : gear;
     this.gear.setAttribute('aria-label', reverse ? 'Reverse gear' : `Gear ${gear}`);
     this.revs.setAttribute('aria-label', `${revs} of 7 rev indicators`);
