@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Dustline race UI check</title></head>
+<body>
+<script type="module">
+  // Dev-only HUD smoke fixture, never imported by the game or production build.
+  // Reuse the real page markup and race/HUD modules; no real records are written.
+  import '/src/style.css';
+  import { HUD } from '/src/game/hud.js';
+  import { Race } from '/src/game/race.js';
+  import { MainMenu } from '/src/game/menu.js';
+  import { checkpoints, finishGate } from '/src/game/track.js';
+  const source = await (await fetch('/index.html')).text();
+  const markup = new DOMParser().parseFromString(source, 'text/html');
+  markup.querySelectorAll('script').forEach((script) => script.remove());
+  document.body.replaceChildren(...markup.body.childNodes);
+  document.querySelector('#main-menu').hidden = true;
+  document.querySelector('#race-ui').hidden = false;
+  document.querySelector('#race-ui').inert = false;
+  document.querySelector('#game').inert = false;
+  const hud = new HUD();
+  const race = new Race();
+  const vehicle = { speed: 0, forwardSpeed: 0 };
+  let screen = 'game';
+  const menu = new MainMenu(() => {
+    screen = 'game';
+    menu.hide();
+    document.querySelector('#race-ui').hidden = false;
+    document.querySelector('#race-ui').inert = false;
+    document.querySelector('#game').inert = false;
+    reset();
+  });
+  function cross(gate, dt) {
+    const point = (offset) => ({ x: gate.position.x + gate.forward.x * offset, z: gate.position.z + gate.forward.z * offset });
+    race.update(dt, point(-1), point(1));
+  }
+  function complete() {
+    race.start(); cross(finishGate, 1);
+    checkpoints.forEach((gate) => cross(gate, 4.5));
+    cross(finishGate, 1);
+    hud.update(vehicle, race);
+  }
+  function reset() {
+    race.reset(); hud.reset(); hud.update(vehicle, race);
+    document.querySelector('#game').focus();
+  }
+  document.querySelector('#reset').addEventListener('click', reset);
+  document.querySelector('#try-again').addEventListener('click', reset);
+  function openMenu() {
+    screen = 'menu';
+    race.reset(); hud.reset(); hud.update(vehicle, race);
+    document.querySelector('#race-ui').hidden = true;
+    document.querySelector('#race-ui').inert = true;
+    document.querySelector('#game').inert = true;
+    menu.show();
+  }
+  document.querySelector('#results-menu').addEventListener('click', openMenu);
+  document.querySelector('#return-menu').addEventListener('click', openMenu);
+  document.querySelector('#results').addEventListener('cancel', (event) => { event.preventDefault(); openMenu(); });
+  document.addEventListener('keydown', (event) => {
+    if (screen !== 'game') return;
+    if (event.code === 'KeyW') complete();
+    if (event.code === 'KeyR') reset();
+  });
+  complete();
+</script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="pl">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Dustline — podgląd cząsteczek</title></head>
+<body>
+  <canvas id="game"></canvas>
+  <div class="masthead"><div class="wordmark">DUSTLINE<span>PODGLĄD PYŁU I PIASKU / TYLKO TEST</span></div></div>
+  <script type="module">
+    // Dev-only visual fixture. Reuses the real world, controller, collisions,
+    // chase camera and particles; its calibration driver is never shipped.
+    import * as THREE from 'three';
+    import '/src/style.css';
+    import { CONFIG } from '/src/game/config.js';
+    import { Vehicle } from '/src/game/vehicle.js';
+    import { ChaseCamera } from '/src/game/camera.js';
+    import { createWorld } from '/src/game/world.js';
+    import { createCar } from '/src/game/car-model.js';
+    import { WheelParticles } from '/src/game/wheel-particles.js';
+    import { track, onTrack } from '/src/game/track.js';
+    const renderer = new THREE.WebGLRenderer({ canvas: document.querySelector('#game'), antialias: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 0.95;
+    const scene = new THREE.Scene(), world = createWorld(scene), car = createCar(scene);
+    const vehicle = new Vehicle(), particles = new WheelParticles(scene, car);
+    const camera = new THREE.PerspectiveCamera(CONFIG.camera.fov, 1, 0.1, 400);
+    const chase = new ChaseCamera(camera);
+    const initial = track.frame(0.30);
+    Object.assign(vehicle, { x: initial.position.x, z: initial.position.z, heading: initial.heading, vx: initial.forward.x * 26, vz: initial.forward.z * 26 });
+    const resize = () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); };
+    addEventListener('resize', resize); resize();
+    chase.update(vehicle, 0, true);
+    function simulate(dt) {
+      const projection = track.project(vehicle.x, vehicle.z);
+      const target = track.frame(projection.progress + (8 + vehicle.speed * 0.45) / track.length).position;
+      const desired = Math.atan2(target.x - vehicle.x, -(target.z - vehicle.z));
+      const error = Math.atan2(Math.sin(desired - vehicle.heading), Math.cos(desired - vehicle.heading));
+      const steer = Math.max(-1, Math.min(1, error * 2.2 - vehicle.yawRate * 0.22));
+      const targetSpeed = 27 - Math.min(7, Math.abs(error) * 6);
+      const before = { x: vehicle.x, z: vehicle.z, heading: vehicle.heading };
+      vehicle.update(dt, { throttle: Number(vehicle.speed < targetSpeed), brake: Number(vehicle.speed > targetSpeed + 2), steer }, onTrack(vehicle.x, vehicle.z));
+      world.collisions.resolve(vehicle, before, dt);
+    }
+    // Warm up an existing trail before the first screenshot.
+    for (let i = 0; i < 120; i++) {
+      simulate(CONFIG.physics.step);
+      car.update(vehicle, vehicle);
+      particles.update(CONFIG.physics.step, vehicle, vehicle, camera, true);
+    }
+    chase.update(vehicle, 0, true);
+    let last = performance.now(), accumulator = 0;
+    renderer.setAnimationLoop((time) => {
+      const dt = Math.min((time - last) / 1000, 0.1); last = time;
+      accumulator += dt;
+      while (accumulator >= CONFIG.physics.step) { simulate(CONFIG.physics.step); accumulator -= CONFIG.physics.step; }
+      car.update(vehicle, vehicle);
+      chase.update(vehicle, dt);
+      particles.update(dt, vehicle, vehicle, camera, true);
+      world.update(vehicle, { splits: [] });
+      renderer.render(scene, camera);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="pl">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Dustline — podgląd wydechu</title></head>
+<body>
+  <canvas id="game"></canvas>
+  <div class="masthead"><div class="wordmark">DUSTLINE<span>WYDECH / PODGLĄD TESTOWY</span></div></div>
+  <div style="position:fixed;bottom:24px;left:24px;display:flex;gap:8px">
+    <button id="up">Zmiana biegu w górę</button><button id="down">Redukcja biegu</button>
+  </div>
+  <script type="module">
+    // A frozen view of a real speed-boundary crossing, using production modules.
+    // No synthetic event in the game loop and no personal-record writes.
+    import * as THREE from 'three';
+    import '/src/style.css';
+    import { CONFIG } from '/src/game/config.js';
+    import { Vehicle } from '/src/game/vehicle.js';
+    import { ChaseCamera } from '/src/game/camera.js';
+    import { createWorld } from '/src/game/world.js';
+    import { createCar } from '/src/game/car-model.js';
+    import { ExhaustEffects } from '/src/game/exhaust-effects.js';
+    import { GearShiftTracker, MPH_PER_MPS } from '/src/game/gears.js';
+    import { gridPose } from '/src/game/track.js';
+    const renderer = new THREE.WebGLRenderer({ canvas: document.querySelector('#game'), antialias: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 0.95;
+    const scene = new THREE.Scene();
+    createWorld(scene);
+    const car = createCar(scene), vehicle = new Vehicle();
+    const exhaust = new ExhaustEffects(scene, car), shifts = new GearShiftTracker();
+    const camera = new THREE.PerspectiveCamera(CONFIG.camera.fov, 1, 0.1, 400);
+    const chase = new ChaseCamera(camera);
+    function show(down) {
+      vehicle.reset(); Object.assign(vehicle, gridPose);
+      const speed = (down ? 34.1 : 33.9) / MPH_PER_MPS;
+      Object.assign(vehicle, { vx: Math.sin(vehicle.heading) * speed, vz: -Math.cos(vehicle.heading) * speed, forwardSpeed: speed });
+      shifts.reset(); exhaust.reset();
+      shifts.update(CONFIG.physics.step, vehicle, true);
+      for (let i = 0; i < 120; i++) {
+        vehicle.update(CONFIG.physics.step, { throttle: Number(!down), brake: Number(down), steer: 0 });
+        const shift = shifts.update(CONFIG.physics.step, vehicle, true);
+        if (shift) { exhaust.trigger(shift); break; }
+      }
+      car.update(vehicle, vehicle);
+      exhaust.update(0.025, vehicle);
+      chase.update(vehicle, 0, true);
+      renderer.render(scene, camera);
+    }
+    function resize() {
+      renderer.setSize(innerWidth, innerHeight);
+      camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+      renderer.render(scene, camera);
+    }
+    addEventListener('resize', resize); resize();
+    document.querySelector('#up').addEventListener('click', () => show(false));
+    document.querySelector('#down').addEventListener('click', () => show(true));
+    show(true);
+  </script>
+</body>
+</html>
