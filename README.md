@@ -66,7 +66,7 @@ Records use the versioned localStorage key `dustline:spline-circuit-v1:best`. On
 | `src/game/wheel-particles.js` | Pooled dust puffs and low-poly sand emitted from the actual tires |
 | `src/game/gears.js` | Shared HUD gear calculation and fixed-step shift detection |
 | `src/game/exhaust-effects.js` | Attached backfire flame, brief warm light and bounded sparks |
-| `src/game/hud.js` | mph/gears/revs, race timer, checkpoint cues, and finish dialog |
+| `src/game/hud.js` | km/h/gears/revs, race timer, checkpoint cues, and finish dialog |
 | `src/game/menu.js` | Track/car choices, selection cards, and start form |
 | `src/style.css` | Fullscreen canvas and reference-inspired overlay |
 
@@ -76,7 +76,7 @@ The simulation runs at 120 Hz, with meters, seconds, and radians throughout. Hea
 
 Tune `lateralGrip`, `highSpeedGrip`, and `steeringAngle` in `config.js` for cornering behavior. The camera defaults to 20 meters above and 14 meters behind, with a 42° perspective field of view and a small forward look offset. These values approximate the reference's elevated view; exact projection cannot be recovered from one screenshot. Position and shortest-path heading smoothing are independent of frame rate.
 
-The HUD uses a translucent gray speed/gear strip, seven circular rev indicators, and blue active dots. Gears and revs are visual estimates from speed; they do not affect engine torque.
+The HUD uses a translucent gray speed/gear strip in km/h, seven circular rev indicators, and blue active dots. Speed converts meters per second to km/h with a factor of 3.6. Gears and revs retain their original speed thresholds and do not affect engine torque.
 
 Crossing a displayed gear boundary produces a brief orange/cream backfire from the model's tailpipe: 0.15 seconds on upshifts and a stronger 0.23-second burst on downshifts, with a maximum of 24 reusable sparks. Detection runs at the physics rate and shares the HUD's gear calculation. A short cooldown prevents repeated flashes around a boundary; initial state, reverse transitions and menu/reset do not trigger bursts. The visual effect leaves acceleration, grip and camera behavior unchanged.
 
