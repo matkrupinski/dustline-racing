@@ -1,0 +1,82 @@
+* { box-sizing: border-box; }
+:root { font-family: Arial, Helvetica, sans-serif; color: #fff9ed; background: #29372c; font-synthesis: none; }
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
+#game { display: block; width: 100%; height: 100%; outline: none; }
+.masthead { position: absolute; inset: 25px 28px auto; display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none; }
+.race-actions { display: flex; align-items: center; gap: 8px; }
+#return-menu { padding: 10px 12px; font-size: 11px; }
+.wordmark { font-size: 22px; font-weight: 900; font-style: italic; letter-spacing: 3px; text-shadow: 0 1px 8px #1f261b50; }
+.wordmark span { display: block; margin-top: 6px; font-size: 9px; font-weight: 500; font-style: normal; letter-spacing: 2px; opacity: .65; }
+button { pointer-events: auto; border: 1px solid #ffffff30; border-radius: 3px; background: #25322955; color: inherit; padding: 8px 12px; font: inherit; font-size: 17px; cursor: pointer; }
+button span { font-size: 11px; vertical-align: 2px; margin-left: 4px; }
+button:hover { background: #253229a0; }
+button:focus-visible { outline: 2px solid #f5dc89; outline-offset: 4px; }
+.hud { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; height: 36px; background: #aaa19ab0; font-size: 17px; }
+.speed { display: flex; align-items: baseline; justify-content: center; gap: 3px; min-width: 78px; padding: 8px 10px; font-style: italic; border-right: 2px solid #655c5370; font-variant-numeric: tabular-nums; }
+.unit { font-size: 13px; }
+.transmission { display: flex; gap: 9px; align-items: center; padding: 0 9px 0 12px; }
+#gear { min-width: 10px; text-align: center; font-size: 15px; font-weight: 700; }
+.revs { display: flex; gap: 3px; }
+.rev { width: 12px; height: 12px; border-radius: 50%; background: #e4e1dd; }
+.rev.active { background: #56a3cc; }
+.controls, .drive-note { position: absolute; bottom: 16px; margin: 0; font-size: 10px; color: #fff9edb0; }
+.controls { left: 28px; display: flex; gap: 8px; align-items: center; }
+.controls span { margin-left: 4px; font-size: 9px; letter-spacing: 1.5px; }
+kbd { font: inherit; letter-spacing: 2px; }
+.drive-note { right: 28px; }
+.notice { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 20px 28px; max-width: 90%; background: #263429ed; border: 1px solid #ffffff30; border-radius: 4px; text-align: center; line-height: 1.6; }
+[hidden] { display: none !important; }
+.race-clock { position: absolute; top: 23px; left: 50%; transform: translateX(-50%); display: grid; gap: 5px; justify-items: center; text-shadow: 0 1px 8px #1f261b70; }
+.eyebrow, #checkpoint-progress { font-size: 9px; letter-spacing: 1.8px; font-weight: 500; opacity: .7; }
+#timer { font-size: 25px; font-variant-numeric: tabular-nums; letter-spacing: 1px; }
+.race-cue { position: absolute; bottom: 68px; left: 50%; transform: translateX(-50%); padding: 10px 16px; background: #293f48ba; color: #f6efde; font-size: 11px; letter-spacing: 1.2px; white-space: nowrap; border-bottom: 2px solid #56a3cc; pointer-events: none; }
+#results { width: min(430px, 92vw); max-height: 88vh; overflow: auto; padding: 28px; border: 1px solid #ffffff30; border-radius: 4px; background: #29372cf5; color: #fff9ed; text-align: center; }
+#results::backdrop { background: #14211a80; }
+#results h1 { font-size: 16px; letter-spacing: 2px; margin: 17px 0 24px; }
+#result-title:focus { outline: none; }
+#results .eyebrow { margin: 0; }
+#final-time { margin: 5px 0 20px; font-size: 43px; font-variant-numeric: tabular-nums; font-weight: 300; }
+.best-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-top: 1px solid #ffffff20; border-bottom: 1px solid #ffffff20; font-size: 10px; letter-spacing: 1px; }
+.best-row strong { color: #71b6d9; font-size: 15px; font-variant-numeric: tabular-nums; }
+#results table { width: 100%; border-collapse: collapse; margin: 17px 0 22px; text-align: right; font-size: 11px; font-variant-numeric: tabular-nums; }
+#results th { font-size: 8px; letter-spacing: 1px; color: #fff9ed90; padding-bottom: 8px; }
+#results td { padding: 6px 0; }
+#results th:first-child, #results td:first-child { text-align: left; }
+#try-again { width: 100%; background: #aaa19a45; padding: 13px; font-size: 14px; }
+#try-again span { float: right; opacity: .6; }
+#storage-note { margin: 13px 0 0; color: #fff9ed80; font-size: 10px; }
+.secondary-action { width: 100%; margin-top: 8px; font-size: 11px; padding: 10px; background: transparent; }
+#main-menu { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; overflow: auto; padding: 35px 24px; background: linear-gradient(115deg, #17281bed, #22342be3); backdrop-filter: blur(5px); }
+.menu-panel { width: min(760px, 100%); margin: auto; }
+.menu-kicker { margin: 0 0 10px; color: #e0be79; font-size: 10px; letter-spacing: 3px; }
+#menu-title { margin: 0; font-size: clamp(38px, 7vw, 64px); font-style: italic; font-weight: 900; letter-spacing: 6px; line-height: 1.1; }
+.menu-intro { margin: 13px 0 33px; color: #fff9eda6; font-size: 13px; line-height: 1.6; }
+.selection-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.selection-grid fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+.selection-grid legend { padding: 0; margin-bottom: 12px; font-size: 10px; letter-spacing: 2px; }
+.selection-grid legend span { margin-right: 9px; color: #78b5d1; }
+.selection-card { position: relative; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #ffffff25; border-radius: 4px; background: #ffffff04; cursor: pointer; }
+.selection-card:has(input:checked) { border-color: #69a4b8; background: #6d9baa0a; }
+.selection-card:has(input:focus-visible) { outline: 2px solid #f5dc89; outline-offset: 4px; }
+.selection-card input { position: absolute; left: 14px; bottom: 18px; margin: 0; width: 16px; height: 16px; accent-color: #69a4b8; cursor: pointer; }
+.selection-art { position: relative; display: block; height: 178px; background: linear-gradient(140deg, #3a503c80, #192c24b0); border-bottom: 1px solid #ffffff12; }
+.selection-art svg { display: block; width: 100%; height: 100%; padding: 13px 26px 20px; }
+.car-model-preview { display: block; width: 100%; height: 100%; }
+.art-caption { position: absolute; bottom: 12px; left: 16px; font-size: 8px; letter-spacing: 1.8px; color: #fff9ed60; }
+.selection-copy { display: grid; gap: 8px; padding: 20px 17px 48px; }
+.selection-copy strong { font-size: 19px; font-weight: 600; }
+.selection-copy > span { color: #fff9ed90; font-size: 11px; line-height: 1.5; }
+.selected-label { position: absolute; bottom: 20px; right: 17px; color: #80bdd6; font-size: 9px; letter-spacing: 1.3px; opacity: 0; }
+.selection-card input:checked ~ .selected-label { opacity: 1; }
+.menu-footer { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-top: 27px; }
+.menu-footer p { margin: 0; font-size: 10px; color: #fff9edb0; }
+.menu-footer kbd { font-size: 10px; letter-spacing: 1px; }
+.menu-footer p > span { display: block; margin-top: 7px; color: #fff9ed60; font-size: 10px; }
+#start-race { min-width: 238px; padding: 16px 21px; border-color: #c7b790; background: #c8b994; color: #21352a; font-size: 13px; font-weight: 700; text-align: left; }
+#start-race:hover { background: #e0d0ac; }
+#start-race span { float: right; margin-left: 20px; font-size: 17px; line-height: 14px; }
+#notice { z-index: 3; }
+@media (max-width: 520px) { .selection-grid { grid-template-columns: 1fr; gap: 20px; } .selection-art { height: 125px; } .selection-copy { padding-top: 14px; } .menu-footer { flex-direction: column-reverse; align-items: stretch; } .menu-footer p { text-align: center; } .menu-intro { margin-bottom: 24px; } #main-menu { padding: 28px 20px; } }
+@media (max-height: 560px) and (min-width: 521px) { #main-menu { padding: 22px; } #menu-title { font-size: 36px; } .menu-kicker { font-size: 8px; } .menu-intro { margin: 8px 0 18px; } .selection-art { height: 105px; } .selection-copy { padding-top: 12px; } .menu-footer { margin-top: 18px; } }
+@media (max-width: 760px) { .controls, .drive-note { display: none; } .masthead { inset: 18px; } .wordmark { font-size: 17px; } .hud { bottom: 3px; height: 31px; } .speed { padding-top: 5px; } }
+@media (max-width: 600px) { .race-clock { left: auto; right: 18px; top: 66px; transform: none; justify-items: end; } #timer { font-size: 20px; } .race-cue { top: auto; bottom: 51px; max-width: 94vw; white-space: normal; text-align: center; font-size: 9px; } }
