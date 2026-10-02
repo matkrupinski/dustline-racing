@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#29372c" />
+    <title>Dustline — Dirt Circuit</title>
+  </head>
+  <body>
+    <canvas id="game" aria-label="Dirt racing circuit. Drive using WASD or arrow keys." tabindex="0" inert></canvas>
+    <section id="main-menu" aria-labelledby="menu-title">
+      <div class="menu-panel">
+        <p class="menu-kicker">SZUTER · DRIFT · TIME ATTACK</p>
+        <h1 id="menu-title">DUSTLINE</h1>
+        <p class="menu-intro">Wybierz trasę i auto. Wykręć swój najlepszy czas.</p>
+        <form id="race-selection">
+          <div class="selection-grid">
+            <fieldset><legend><span>01</span> WYBIERZ TRASĘ</legend><div id="track-options"></div></fieldset>
+            <fieldset><legend><span>02</span> WYBIERZ AUTO</legend><div id="car-options"></div></fieldset>
+          </div>
+          <div class="menu-footer">
+            <p><kbd>WASD</kbd> / <kbd>STRZAŁKI</kbd><span>Sterowanie · R restart · Esc menu</span></p>
+            <button id="start-race" type="submit">Rozpocznij wyścig <span aria-hidden="true">→</span></button>
+          </div>
+        </form>
+      </div>
+    </section>
+    <template id="track-preview">
+      <span class="selection-art track-art">
+        <svg viewBox="0 0 220 140" aria-hidden="true"><polyline class="course-outline" fill="none" stroke="#bba17b" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/><circle class="course-start" r="5" fill="#65b3d9" stroke="#f4e7ce" stroke-width="2"/></svg>
+        <span class="art-caption">DIRT CIRCUIT / 01</span>
+      </span>
+    </template>
+    <template id="car-preview">
+      <span class="selection-art car-art">
+        <canvas class="car-model-preview" aria-hidden="true"></canvas>
+        <span class="art-caption">RALLY HATCH / 01</span>
+      </span>
+    </template>
+    <div id="race-ui" hidden inert>
+    <header class="masthead">
+      <div class="wordmark">DUSTLINE<span>DIRT CIRCUIT / TIME ATTACK</span></div>
+      <nav class="race-actions" aria-label="Race actions">
+        <button id="return-menu" title="Menu główne (Esc)">Menu</button>
+        <button id="reset" title="Reset car (R)">↺ <span>Reset</span></button>
+      </nav>
+    </header>
+    <section class="race-clock" aria-label="Race timing">
+      <span class="eyebrow">LAP 01 / 01</span>
+      <time id="timer">00:00.000</time>
+      <span id="checkpoint-progress">CP 00 / 06</span>
+    </section>
+    <div id="race-cue" role="status" class="race-cue">PRESS W / ↑ TO START</div>
+    <p class="controls"><kbd>W A S D</kbd> / <kbd>↑ ← ↓ →</kbd><span>DRIVE</span></p>
+    <section class="hud" aria-label="Vehicle telemetry">
+      <div class="speed"><span id="speed">0</span><span class="unit">mph</span></div>
+      <div class="transmission"><span id="gear" aria-label="Gear">1</span><div id="revs" class="revs" aria-label="Engine revs"></div></div>
+    </section>
+    <p class="drive-note">W / ↑ accelerate · S / ↓ brake & reverse</p>
+    </div>
+    <div id="notice" class="notice" role="status" hidden></div>
+    <dialog id="results" aria-labelledby="result-title">
+      <p class="eyebrow">DUSTLINE / TIME ATTACK</p>
+      <h1 id="result-title" tabindex="-1">CIRCUIT COMPLETE</h1>
+      <p class="eyebrow">FINAL TIME</p>
+      <div id="final-time">00:00.000</div>
+      <div class="best-row"><span>PERSONAL BEST</span><strong id="personal-best">00:00.000</strong></div>
+      <table aria-label="Checkpoint splits">
+        <thead><tr><th>CHECKPOINT</th><th>SECTOR</th><th>ELAPSED</th></tr></thead>
+        <tbody id="split-rows"></tbody>
+      </table>
+      <button id="try-again">↺ Try Again <span>R</span></button>
+      <button id="results-menu" class="secondary-action">Menu główne</button>
+      <p id="storage-note"></p>
+    </dialog>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
