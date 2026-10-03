@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="pl">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Dustline — fizyka pylonów</title></head>
+<body>
+  <canvas id="game"></canvas>
+  <div class="masthead"><div class="wordmark">DUSTLINE<span id="setup">PYLONY / TYLKO TEST</span></div></div>
+  <div style="position:fixed;bottom:24px;left:24px;display:grid;gap:12px">
+    <div id="status" role="status">Pylon stoi · checkpoint 0/6</div>
+    <button id="strike">Uderz w pylon</button>
+  </div>
+  <script type="module">
+    // A short, repeatable hit through the real controller, prop physics and
+    // checkpoint gate. No localStorage writes; this page is not in the bundle.
+    import * as THREE from 'three';
+    import '/src/style.css';
+    import { CONFIG } from '/src/game/config.js';
+    import { CARS } from '/src/game/cars.js';
+    import { COURSES } from '/src/game/track.js';
+    import { Vehicle } from '/src/game/vehicle.js';
+    import { Race } from '/src/game/race.js';
+    import { createWorld } from '/src/game/world.js';
+    import { createCar } from '/src/game/car-model.js';
+    import { ChaseCamera } from '/src/game/camera.js';
+    const params = new URLSearchParams(location.search);
+    const course = COURSES[params.get('course')] ?? COURSES['dirt-circuit'];
+    const spec = CARS[params.get('car')] ?? CARS['stratos-sprint'];
+    document.querySelector('#setup').textContent = `${course.name} / ${spec.name} / TYLKO TEST`;
+    const renderer = new THREE.WebGLRenderer({ canvas: document.querySelector('#game'), antialias: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.95;
+    const scene = new THREE.Scene(), world = createWorld(scene, course), car = createCar(scene, spec);
+    const vehicle = new Vehicle(course.physics, spec), race = new Race(null, course, spec);
+    const gate = course.checkpoints[0], body = world.pylons.bodies[1];
+    const camera = new THREE.PerspectiveCamera(CONFIG.camera.fov, 1, 0.1, 400);
+    const chase = new ChaseCamera(camera);
+    const inspectionPose = { x: body.spawn.x, z: body.spawn.z, heading: gate.heading };
+    let running = false, elapsed = 0, last = performance.now(), accumulator = 0;
+    function reset() {
+      vehicle.reset(); race.reset(); world.pylons.reset(); elapsed = 0; accumulator = 0;
+      Object.assign(vehicle, { x: body.spawn.x - gate.forward.x * 5, z: body.spawn.z - gate.forward.z * 5,
+        heading: gate.heading, vx: gate.forward.x * 20, vz: gate.forward.z * 20 });
+      car.update(vehicle, vehicle); chase.update(inspectionPose, 0, true);
+    }
+    document.querySelector('#strike').addEventListener('click', () => {
+      reset(); race.start(); race.startedLap = true; running = true;
+    });
+    function resize() {
+      renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+    }
+    addEventListener('resize', resize); resize(); reset();
+    renderer.setAnimationLoop((time) => {
+      const frameTime = Math.min((time - last) / 1000, 0.1); last = time; accumulator += frameTime;
+      while (accumulator >= CONFIG.physics.step) {
+        if (running) {
+          const before = { x: vehicle.x, z: vehicle.z, heading: vehicle.heading };
+          vehicle.update(CONFIG.physics.step, { throttle: 1, brake: 0, steer: 0 }, course.onTrack(vehicle.x, vehicle.z));
+          world.collisions.resolve(vehicle, before, CONFIG.physics.step);
+          world.pylons.update(CONFIG.physics.step, vehicle, before);
+          race.update(CONFIG.physics.step, before, vehicle);
+          elapsed += CONFIG.physics.step;
+          if (elapsed >= 0.9) running = false;
+        } else world.pylons.update(CONFIG.physics.step);
+        accumulator -= CONFIG.physics.step;
+      }
+      car.update(vehicle, vehicle); world.update(inspectionPose, race);
+      document.querySelector('#status').textContent = `${body.hit ? 'Pylon przewrócony' : 'Pylon stoi'} · checkpoint ${race.splits.length}/6`;
+      renderer.render(scene, camera);
+    });
+  </script>
+</body>
+</html>

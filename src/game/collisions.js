@@ -67,9 +67,9 @@ export class StaticCollisions {
     }
   }
 
-  nearby(x, z) {
+  nearby(x, z, radius = this.carRadius) {
     const found = new Set();
-    const r = this.carRadius;
+    const r = radius;
     this.visitCells(x - r, z - r, x + r, z + r, (key) => {
       this.cells.get(key)?.forEach((obstacle) => found.add(obstacle));
     });
@@ -78,6 +78,7 @@ export class StaticCollisions {
 
   resolve(vehicle, before, dt) {
     const p = this.options;
+    const bounds = vehicle.spec?.collision ?? p;
     const turn = vehicle.heading - before.heading;
     const steps = Math.max(1, Math.ceil(vehicle.speed * dt / p.maxStep), Math.ceil(Math.abs(turn) / p.maxAngleStep));
     const stepTime = dt / steps;
@@ -91,10 +92,10 @@ export class StaticCollisions {
       vehicle.heading = before.heading + turn * step / steps;
       vehicle.x += vehicle.vx * stepTime;
       vehicle.z += vehicle.vz * stepTime;
-      const car = { x: vehicle.x, z: vehicle.z, halfWidth: p.halfWidth, halfLength: p.halfLength, axes: axes(vehicle.heading) };
+      const car = { x: vehicle.x, z: vehicle.z, halfWidth: bounds.halfWidth, halfLength: bounds.halfLength, axes: axes(vehicle.heading) };
       for (let pass = 0; pass < p.iterations; pass++) {
         let touching = false;
-        for (const obstacle of this.nearby(car.x, car.z)) {
+        for (const obstacle of this.nearby(car.x, car.z, Math.hypot(car.halfWidth, car.halfLength))) {
           const contact = boxContact(car, obstacle);
           if (!contact) continue;
           touching = true;

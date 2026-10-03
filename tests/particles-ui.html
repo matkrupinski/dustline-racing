@@ -15,19 +15,24 @@
     import { createWorld } from '/src/game/world.js';
     import { createCar } from '/src/game/car-model.js';
     import { WheelParticles } from '/src/game/wheel-particles.js';
-    import { track, onTrack } from '/src/game/track.js';
+    import { COURSES } from '/src/game/track.js';
+    import { CARS, DEFAULT_CAR } from '/src/game/cars.js';
+    const params = new URLSearchParams(location.search);
+    const track = COURSES[params.get('course')] ?? COURSES['dirt-circuit'];
+    const spec = CARS[params.get('car')] ?? DEFAULT_CAR;
+    document.querySelector('.wordmark span').textContent = `${track.name} / ${spec.name} / TYLKO TEST`;
     const renderer = new THREE.WebGLRenderer({ canvas: document.querySelector('#game'), antialias: true });
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 0.95;
-    const scene = new THREE.Scene(), world = createWorld(scene), car = createCar(scene);
-    const vehicle = new Vehicle(), particles = new WheelParticles(scene, car);
+    const scene = new THREE.Scene(), world = createWorld(scene, track), car = createCar(scene, spec);
+    const vehicle = new Vehicle(track.physics, spec), particles = new WheelParticles(scene, car, track);
     const camera = new THREE.PerspectiveCamera(CONFIG.camera.fov, 1, 0.1, 400);
     const chase = new ChaseCamera(camera);
     const initial = track.frame(0.30);
-    Object.assign(vehicle, { x: initial.position.x, z: initial.position.z, heading: initial.heading, vx: initial.forward.x * 26, vz: initial.forward.z * 26 });
+    Object.assign(vehicle, { x: initial.position.x, z: initial.position.z, heading: initial.heading, vx: initial.forward.x * 20, vz: initial.forward.z * 20 });
     const resize = () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); };
     addEventListener('resize', resize); resize();
     chase.update(vehicle, 0, true);
@@ -37,9 +42,9 @@
       const desired = Math.atan2(target.x - vehicle.x, -(target.z - vehicle.z));
       const error = Math.atan2(Math.sin(desired - vehicle.heading), Math.cos(desired - vehicle.heading));
       const steer = Math.max(-1, Math.min(1, error * 2.2 - vehicle.yawRate * 0.22));
-      const targetSpeed = 27 - Math.min(7, Math.abs(error) * 6);
+      const targetSpeed = (track.theme === 'snow' ? 22 : 26) - Math.min(7, Math.abs(error) * 6);
       const before = { x: vehicle.x, z: vehicle.z, heading: vehicle.heading };
-      vehicle.update(dt, { throttle: Number(vehicle.speed < targetSpeed), brake: Number(vehicle.speed > targetSpeed + 2), steer }, onTrack(vehicle.x, vehicle.z));
+      vehicle.update(dt, { throttle: Number(vehicle.speed < targetSpeed), brake: Number(vehicle.speed > targetSpeed + 2), steer }, track.onTrack(vehicle.x, vehicle.z));
       world.collisions.resolve(vehicle, before, dt);
     }
     // Warm up an existing trail before the first screenshot.

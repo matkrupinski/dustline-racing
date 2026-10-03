@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="pl">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Dustline — test muzyki</title></head>
+<body style="background:#10162a">
+  <script type="module">
+    import '/src/style.css';
+    import { PHONK } from '/src/game/music-theme.js';
+    import { RaceMusic } from '/src/game/race-music.js';
+    const source = new URLSearchParams(location.search).get('source');
+    const song = source === 'audio' ? { ...PHONK, audioUrl: undefined, videoId: 'RXRWE_XQ8aE' }
+      : source === 'youtube' ? { ...PHONK, audioUrl: undefined } : PHONK;
+    const music = new RaceMusic({ onStatus: (text) => { document.querySelector('#music-status').textContent = text; } });
+    let active = false;
+    document.querySelector('#music-title').textContent = song.title;
+    document.querySelector('#source').textContent = source === 'audio' ? 'Oficjalna publikacja audio / YouTube'
+      : source === 'youtube' ? 'Link podany przez użytkownika / YouTube' : 'MP3 z lokalnych zasobów gry';
+    void music.select(song);
+    document.querySelector('#music-play').addEventListener('click', () => { active = true; music.start(); });
+    document.querySelector('#reset-music').addEventListener('click', () => { active = false; music.reset(); });
+    document.querySelector('#music-mute').addEventListener('click', () => {
+      music.setMuted(!music.muted); document.querySelector('#music-mute').textContent = music.muted ? 'Muzyka: wył.' : 'Muzyka: wł.';
+    });
+    document.querySelector('#music-volume').addEventListener('input', (event) => music.setVolume(Number(event.target.value)));
+    document.querySelector('#music-file').addEventListener('change', async (event) => {
+      await music.useLocalFile(event.target.files[0]);
+      active = false;
+      document.querySelector('#source').textContent = 'Lokalny plik / test rzeczywistego HTMLAudioElement';
+    });
+    function inspect() {
+      const seconds = music.ready ? music.player.getCurrentTime() : 0;
+      music.update({ elapsed: seconds }, active);
+      document.querySelector('#metrics').textContent = `Stan: ${music.playing ? 'gra' : 'pauza'} · czas: ${seconds.toFixed(2)} s · długość: ${music.ready ? music.player.getDuration().toFixed(2) : 0} s · wyciszony: ${music.ready ? music.player.isMuted() : false}`;
+      requestAnimationFrame(inspect);
+    }
+    inspect();
+    addEventListener('pagehide', () => music.dispose());
+  </script>
+  <div style="padding:30px;max-width:740px"><h1>Muzyka / test odtwarzania</h1><p id="source"></p><p id="metrics"></p><p>Odtwórz uruchamia odtwarzacz YouTube lub wybrany lokalny plik. Ten test nie pobiera utworu ani nie zapisuje rekordów.</p><button id="reset-music">Reset muzyki</button></div>
+  <aside class="music-panel" style="top:190px;bottom:auto;left:30px;right:auto">
+    <a id="music-title"></a><span id="music-phase">160 BPM / PODGLĄD TESTOWY</span>
+    <div id="music-player"></div>
+    <div class="music-controls"><button id="music-play">Odtwórz</button><button id="music-mute">Muzyka: wł.</button><label>Głośność<input id="music-volume" type="range" min="0" max="100" value="40"></label></div>
+    <p id="music-status" role="status"></p>
+    <label class="music-file">Wybierz plik utworu (MP3 / WAV / OGG)<input id="music-file" type="file" accept="audio/*" aria-label="Lokalny plik utworu"></label>
+  </aside>
+</body>
+</html>

@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="pl">
+<head><meta charset="utf-8"><title>Dustline — test dźwięku</title></head>
+<body>
+  <h1>DUSTLINE / AUDIO</h1>
+  <button id="test">Sprawdź renderowanie audio</button>
+  <button id="live">Sprawdź silnik i biegi na żywo (4 s)</button>
+  <pre id="result">Test silnika, zmiany biegów, wydechu i wyciszenia.</pre>
+  <pre id="live-result"></pre>
+  <script type="module">
+    import { VehicleAudio } from '/src/game/vehicle-audio.js';
+    import { Vehicle } from '/src/game/vehicle.js';
+    import { GearShiftTracker } from '/src/game/gears.js';
+    const vehicle = { speed: 15, forwardSpeed: 15 };
+    const controls = { throttle: 1, brake: 0 };
+    async function render(kind) {
+      // Real Web Audio rendering, without autoplay, speakers or fake audio nodes.
+      const ctx = new OfflineAudioContext(1, 44100, 44100);
+      const audio = new VehicleAudio();
+      audio.context = ctx; audio.buildGraph();
+      // Repeatable fixture noise makes relative energy checks deterministic.
+      let seed = 12345;
+      const noise = audio.noiseBuffer.getChannelData(0);
+      for (let i = 0; i < noise.length; i++) {
+        seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+        noise[i] = seed / 2147483648 - 1;
+      }
+      if (kind !== 'silent' && !kind.endsWith('-only')) {
+        audio.updateEngine(kind === 'idle' ? { speed: 0, forwardSpeed: 0 } : vehicle,
+          kind === 'idle' ? { throttle: 0, brake: 0 } : controls);
+      }
+      const pause = ctx.suspend(0.25), rendering = ctx.startRendering();
+      await pause;
+      if (kind === 'up' || kind === 'down') audio.playShift(kind);
+      if (kind.endsWith('-only')) {
+        audio.master.gain.value = 0.65;
+        audio.playShift(kind.replace('-only', ''));
+      }
+      if (kind === 'muted' || kind === 'reset') {
+        audio.playShift('down');
+        audio.trigger('up');
+        if (kind === 'muted') audio.setMuted(true);
+        else audio.reset();
+      }
+      if (kind === 'stress') for (let i = 0; i < 30; i++) audio.playShift('down');
+      const voices = audio.voices.size;
+      await ctx.resume();
+      const buffer = await rendering, data = buffer.getChannelData(0);
+      let sum = 0, peak = 0, early = 0, late = 0;
+      let low = 0, highLow = 0, bassPower = 0, treblePower = 0;
+      const bassAlpha = 1 - Math.exp(-2 * Math.PI * 300 / ctx.sampleRate);
+      const trebleAlpha = 1 - Math.exp(-2 * Math.PI * 900 / ctx.sampleRate);
+      for (let i = 0; i < data.length; i++) {
+        if (!Number.isFinite(data[i])) throw new Error(`${kind}: non-finite signal`);
+        sum += data[i] ** 2; peak = Math.max(peak, Math.abs(data[i]));
+        if (i >= 11025 && i < 22050) early += data[i] ** 2;
+        if (i > 33075) late += data[i] ** 2;
+        // Measure settled output through 300 Hz low-pass / 900 Hz high-pass
+        // probes: a bass-focused engine must have much less sharp treble energy.
+        low += bassAlpha * (data[i] - low);
+        highLow += trebleAlpha * (data[i] - highLow);
+        if (i > 33075) { bassPower += low ** 2; treblePower += (data[i] - highLow) ** 2; }
+      }
+      return { rms: Math.sqrt(sum / data.length), peak, early, late, voices,
+        bassRatio: bassPower / Math.max(treblePower, 1e-12) };
+    }
+    document.querySelector('#test').onclick = async () => {
+      const result = document.querySelector('#result'); result.textContent = 'Rendering…';
+      const results = {};
+      try {
+        for (const kind of ['silent', 'idle', 'engine', 'up', 'down', 'up-only', 'down-only', 'muted', 'reset', 'stress']) results[kind] = await render(kind);
+        const check = (condition, message) => { if (!condition) throw new Error(message); };
+        check(results.silent.peak === 0, 'Menu/load must be silent');
+        check(results.idle.rms > 0.01 && results.engine.rms > results.idle.rms, 'Engine/load signal');
+        check(results.idle.bassRatio > 30 && results.engine.bassRatio > 15, 'Bass must dominate sharp treble');
+        // Measure burst strength without a phase-dependent sum with engine bass.
+        check(results['down-only'].early > results['up-only'].early && results['up-only'].rms > 0.001, 'Directional burst strength');
+        check(results.up.peak > results.engine.peak && results.down.peak > results.engine.peak, 'Audible transients over engine');
+        check(results.muted.late < 1e-10 && results.reset.late < 1e-10, 'Mute/reset silence');
+        check(results.stress.voices <= 9, 'Bounded transient voices');
+        check(Object.values(results).every((r) => r.peak < 1), 'No clipping');
+        result.textContent = 'PASS — 10 real Web Audio renders · bass dominates treble\n' + JSON.stringify(results, null, 2);
+      } catch (error) { result.textContent = 'FAIL — ' + error.message + '\n' + JSON.stringify(results, null, 2); }
+    };
+    document.querySelector('#live').onclick = async (event) => {
+      const button = event.currentTarget, result = document.querySelector('#live-result');
+      button.disabled = true;
+      const audio = new VehicleAudio(), car = new Vehicle(), shifts = new GearShiftTracker();
+      try {
+        if (!await audio.unlock()) throw new Error('User gesture did not unlock AudioContext');
+        const analyser = audio.context.createAnalyser();
+        analyser.fftSize = 1024; audio.master.connect(analyser);
+        const data = new Float32Array(analyser.fftSize);
+        let start, last, accumulator = 0, up = 0, down = 0, peak = 0, mutedPeak = 0;
+        await new Promise((resolve, reject) => {
+          function frame(time) {
+            try {
+              start ??= time; last ??= time;
+              const elapsed = (time - start) / 1000;
+              accumulator += Math.min((time - last) / 1000, 0.1); last = time;
+              const input = { throttle: Number(elapsed < 2), brake: Number(elapsed >= 2 && elapsed < 3.3), steer: 0 };
+              while (accumulator >= 1 / 120) {
+                car.update(1 / 120, input);
+                const shift = shifts.update(1 / 120, car, true);
+                if (shift) { audio.trigger(shift); shift === 'up' ? up++ : down++; }
+                accumulator -= 1 / 120;
+              }
+              if (elapsed >= 3.4 && !audio.muted) audio.setMuted(true);
+              audio.update(car, input, true);
+              analyser.getFloatTimeDomainData(data);
+              const framePeak = Math.max(...data.map(Math.abs));
+              peak = Math.max(peak, framePeak);
+              if (elapsed > 3.8) mutedPeak = Math.max(mutedPeak, framePeak);
+              result.textContent = `Running: ${elapsed.toFixed(1)} s · up ${up} · down ${down}`;
+              if (elapsed < 4.2) requestAnimationFrame(frame);
+              else {
+                if (!up || !down || peak < 0.01 || mutedPeak > 0.001 || audio.voices.size || audio.pending) {
+                  throw new Error(JSON.stringify({ up, down, peak, mutedPeak, voices: audio.voices.size, pending: audio.pending }));
+                }
+                result.textContent = `PASS — running AudioContext, ${up} upshifts, ${down} downshifts, output peak ${peak.toFixed(3)}, muted peak ${mutedPeak.toFixed(6)}, no pending/live bursts`;
+                resolve();
+              }
+            } catch (error) { reject(error); }
+          }
+          requestAnimationFrame(frame);
+        });
+        analyser.disconnect();
+      } catch (error) { result.textContent = 'FAIL — ' + error.message; }
+      finally { audio.dispose(); button.disabled = false; }
+    };
+  </script>
+</body>
+</html>

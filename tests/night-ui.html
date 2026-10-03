@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="pl">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Dustline — latarnie i rytm</title></head>
+<body>
+  <canvas id="game"></canvas>
+  <div class="masthead"><div class="wordmark">DUSTLINE<span>LATARNIE / RYTM / TYLKO TEST</span></div></div>
+  <div style="position:fixed;bottom:25px;left:25px;display:grid;gap:10px;max-width:520px;background:#10162aee;padding:15px">
+    <p id="impact" role="status">Gotowy do uderzenia w latarnię</p>
+    <p id="metrics"></p>
+    <div><button id="strike">Uderz w latarnię</button> <button id="reset-car">Reset auta</button></div>
+    <div><button id="play">Odtwórz muzykę</button> <button id="pause">Pauza muzyki</button> <button id="reset-song">Reset muzyki</button></div>
+    <div><button id="flash">Błysk okien</button> <button id="between">Między uderzeniami</button></div>
+  </div>
+  <aside class="music-panel" style="bottom:25px">
+    <a>KORDHELL — MURDER IN MY MIND</a><div id="music-player"></div><p id="music-status" role="status"></p>
+  </aside>
+  <script type="module">
+    // Development fixture: real world/colliders/controller and supplied audio.
+    // No personal records or in-game autopilot; excluded from the Vite build.
+    import * as THREE from 'three';
+    import '/src/style.css';
+    import { CONFIG } from '/src/game/config.js';
+    import { COURSES } from '/src/game/track.js';
+    import { CARS } from '/src/game/cars.js';
+    import { Vehicle } from '/src/game/vehicle.js';
+    import { createWorld } from '/src/game/world.js';
+    import { createCar } from '/src/game/car-model.js';
+    import { ChaseCamera } from '/src/game/camera.js';
+    import { RaceMusic } from '/src/game/race-music.js';
+    const course = COURSES['phonk-docks'];
+    const spec = CARS[new URLSearchParams(location.search).get('car')] ?? CARS['stratos-sprint'];
+    const renderer = new THREE.WebGLRenderer({ canvas: document.querySelector('#game'), antialias: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 0.95;
+    const scene = new THREE.Scene(), world = createWorld(scene, course), car = createCar(scene, spec);
+    const vehicle = new Vehicle(course.physics, spec);
+    const lamp = world.root.getObjectByName('streetlight-0-1');
+    const position = lamp.getWorldPosition(new THREE.Vector3());
+    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(lamp.getWorldQuaternion(new THREE.Quaternion()));
+    const heading = Math.atan2(forward.x, -forward.z);
+    const camera = new THREE.PerspectiveCamera(CONFIG.camera.fov, 1, 0.1, 400), chase = new ChaseCamera(camera);
+    const music = new RaceMusic({ onStatus: (message) => { document.querySelector('#music-status').textContent = message; } });
+    let activeMusic = false, moving = false, hit = false, elapsed = 0, accumulator = 0, last = performance.now();
+    void music.select(course.music);
+    function resetCar() {
+      vehicle.reset(); moving = false; hit = false; elapsed = 0; accumulator = 0;
+      Object.assign(vehicle, { x: position.x - forward.x * 7, z: position.z - forward.z * 7, heading });
+      chase.update(vehicle, 0, true); car.update(vehicle, vehicle);
+      world.streetlights.reset();
+    }
+    document.querySelector('#strike').addEventListener('click', () => {
+      resetCar(); vehicle.vx = forward.x * 37; vehicle.vz = forward.z * 37; moving = true;
+    });
+    document.querySelector('#reset-car').addEventListener('click', resetCar);
+    document.querySelector('#play').addEventListener('click', () => { activeMusic = true; music.start(music.ready ? music.player.getCurrentTime() : 0); });
+    document.querySelector('#pause').addEventListener('click', () => { activeMusic = false; music.pause(); });
+    document.querySelector('#reset-song').addEventListener('click', () => { activeMusic = false; music.reset(); });
+    // Seek the actual paused audio clock to reproducible lighting frames.
+    function previewBeat(seconds) {
+      activeMusic = false; music.pause();
+      if (music.ready) music.player.seekTo(seconds, true);
+    }
+    document.querySelector('#flash').addEventListener('click', () => previewBeat(0.375));
+    document.querySelector('#between').addEventListener('click', () => previewBeat(0.1875));
+    function resize() { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+    addEventListener('resize', resize); resize(); resetCar();
+    addEventListener('pagehide', () => music.dispose());
+    renderer.setAnimationLoop((time) => {
+      const dt = Math.min((time - last) / 1000, 0.1); last = time; accumulator += dt;
+      while (accumulator >= CONFIG.physics.step) {
+        if (moving) {
+          const before = { x: vehicle.x, z: vehicle.z, heading: vehicle.heading };
+          vehicle.update(CONFIG.physics.step, { throttle: 1, brake: 0, steer: 0 }, course.onTrack(vehicle.x, vehicle.z));
+          hit = world.collisions.resolve(vehicle, before, CONFIG.physics.step) || hit;
+          world.streetlights.update(CONFIG.physics.step, vehicle, before);
+          hit = world.streetlights.bodies.some((body) => body.hit) || hit;
+          elapsed += CONFIG.physics.step; if (elapsed > 0.35) moving = false;
+        } else world.streetlights.update(CONFIG.physics.step);
+        accumulator -= CONFIG.physics.step;
+      }
+      car.update(vehicle, vehicle); chase.update(vehicle, dt);
+      const seconds = music.ready ? music.player.getCurrentTime() : 0;
+      const clock = music.update({ elapsed: seconds }, activeMusic);
+      world.update(vehicle, { splits: [], elapsed: seconds }, clock);
+      const glow = world.root.getObjectByName('music-reactive-windows').material.emissiveIntensity;
+      const fallen = world.streetlights.bodies.some((body) => body.tilt > 1.5);
+      document.querySelector('#impact').textContent = `${fallen ? 'Latarnia przewrócona' : hit ? 'Kolizja z latarnią' : 'Gotowy do uderzenia w latarnię'} · ${Math.round(vehicle.speed * 3.6)} km/h`;
+      const flash = world.root.getObjectByName('window-strobe-0').intensity;
+      document.querySelector('#metrics').textContent = `Czas utworu: ${clock.toFixed(3)} s · blask okien: ${glow.toFixed(3)} · błysk: ${flash.toFixed(1)}`;
+      renderer.render(scene, camera);
+    });
+  </script>
+</body>
+</html>

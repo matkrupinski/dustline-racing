@@ -1,4 +1,3 @@
-import { checkpoints } from './track.js';
 import { formatTime } from './race.js';
 import { displayedGear, MPH_PER_MPS } from './gears.js';
 
@@ -36,7 +35,7 @@ export class HUD {
     this.revs.setAttribute('aria-label', `${revs} of 7 rev indicators`);
     this.dots.forEach((dot, index) => dot.classList.toggle('active', index < revs));
     this.timer.textContent = formatTime(race.elapsed);
-    this.progress.textContent = `CP ${String(race.splits.length).padStart(2, '0')} / ${String(checkpoints.length).padStart(2, '0')}`;
+    this.progress.textContent = `CP ${String(race.splits.length).padStart(2, '0')} / ${String(race.course.checkpoints.length).padStart(2, '0')}`;
     const message = race.elapsed < race.cueUntil && race.state !== 'finished' ? race.cue : '';
     if (this.cue.textContent !== message) this.cue.textContent = message;
     this.cue.hidden = !message;
@@ -45,7 +44,8 @@ export class HUD {
 
   showResults(race) {
     this.showingResults = true;
-    document.querySelector('#result-title').textContent = race.isPersonalBest ? 'NEW PERSONAL BEST' : 'CIRCUIT COMPLETE';
+    document.querySelector('#result-title').textContent = race.isPersonalBest ? 'NEW PERSONAL BEST'
+      : race.course.closed === false ? 'STAGE COMPLETE' : 'CIRCUIT COMPLETE';
     document.querySelector('#final-time').textContent = formatTime(race.elapsed);
     document.querySelector('#personal-best').textContent = formatTime(race.best);
     document.querySelector('#storage-note').textContent = race.storageAvailable ? 'Personal best saved on this device.' : 'Storage unavailable — best kept for this session.';

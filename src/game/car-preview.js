@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import { createCar } from './car-model.js';
+import { DEFAULT_CAR } from './cars.js';
 
 // Render the gameplay model directly, so geometry, colors and future model
 // changes are shared with the selection card. This is a static preview: no loop.
 export class CarPreview {
-  constructor(canvas) {
+  constructor(canvas, spec = DEFAULT_CAR) {
     this.canvas = canvas;
     this.renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
     this.renderer.shadowMap.enabled = true;
@@ -16,7 +17,11 @@ export class CarPreview {
     this.camera.position.set(6, 6, 8);
     this.camera.lookAt(0, 0.8, 0);
 
-    const car = createCar(this.scene);
+    if (spec.model === 'stratos') {
+      this.camera.position.set(6, 5, -8);
+      this.camera.lookAt(0, 0.8, 0);
+    }
+    const car = createCar(this.scene, spec);
     car.update({ x: 0, z: 0, heading: 0 }, { steering: 0, speed: 0 });
     // Match the warm gameplay light and preserve the card's CSS background.
     this.scene.add(new THREE.HemisphereLight('#fff0d5', '#465346', 1.7));
@@ -44,8 +49,10 @@ export class CarPreview {
     if (!width || !height) return; // Cards inside a hidden menu have no size.
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setSize(width, height, false);
-    this.camera.left = -2.8 * width / height;
-    this.camera.right = 2.8 * width / height;
+    const halfHeight = 1.9;
+    this.camera.top = halfHeight; this.camera.bottom = -halfHeight;
+    this.camera.left = -halfHeight * width / height;
+    this.camera.right = halfHeight * width / height;
     this.camera.updateProjectionMatrix();
     this.renderer.render(this.scene, this.camera);
   }

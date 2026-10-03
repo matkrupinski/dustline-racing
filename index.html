@@ -39,14 +39,15 @@
     </template>
     <div id="race-ui" hidden inert>
     <header class="masthead">
-      <div class="wordmark">DUSTLINE<span>DIRT CIRCUIT / TIME ATTACK</span></div>
+      <div class="wordmark">DUSTLINE<span id="course-name">DIRT CIRCUIT / TIME ATTACK</span><span id="car-name">RALLY HATCH / 4×4</span></div>
       <nav class="race-actions" aria-label="Race actions">
+        <button id="toggle-sound" aria-label="Wycisz dźwięk auta" aria-pressed="false">Dźwięk: wł.</button>
         <button id="return-menu" title="Menu główne (Esc)">Menu</button>
         <button id="reset" title="Reset car (R)">↺ <span>Reset</span></button>
       </nav>
     </header>
     <section class="race-clock" aria-label="Race timing">
-      <span class="eyebrow">LAP 01 / 01</span>
+      <span class="eyebrow" id="race-kind">LAP 01 / 01</span>
       <time id="timer">00:00.000</time>
       <span id="checkpoint-progress">CP 00 / 06</span>
     </section>
@@ -57,6 +58,18 @@
       <div class="transmission"><span id="gear" aria-label="Gear">1</span><div id="revs" class="revs" aria-label="Engine revs"></div></div>
     </section>
     <p class="drive-note">W / ↑ accelerate · S / ↓ brake & reverse</p>
+    <aside id="music-panel" class="music-panel" aria-label="Muzyka etapu" hidden>
+      <a id="music-title" target="_blank" rel="noopener noreferrer"></a>
+      <span id="music-phase">160 BPM / INTRO</span>
+      <div id="music-player"></div>
+      <div class="music-controls">
+        <button id="music-play" type="button">Odtwórz</button>
+        <button id="music-mute" type="button" aria-pressed="false">Muzyka: wł.</button>
+        <label>Głośność <input id="music-volume" type="range" min="0" max="100" value="40" aria-label="Głośność muzyki"></label>
+      </div>
+      <p id="music-status" role="status"></p>
+      <label class="music-file">Wybierz plik utworu (MP3 / WAV / OGG)<input id="music-file" type="file" accept="audio/*,.mp3,.wav,.ogg,.m4a,.flac" aria-label="Lokalny plik utworu"></label>
+    </aside>
     </div>
     <div id="notice" class="notice" role="status" hidden></div>
     <dialog id="results" aria-labelledby="result-title">

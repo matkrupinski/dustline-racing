@@ -4,7 +4,8 @@ const random = (min, max) => min + Math.random() * (max - min);
 const axis = new THREE.Vector3(0, 0, 1);
 
 // A short attached flame and a bounded pool of flying sparks. No textures,
-// sound, physics impulses or engine torque changes are involved.
+// physics impulses or engine torque changes are involved. VehicleAudio consumes
+// the same gear event separately to synchronize sound with each burst.
 export class ExhaustEffects {
   constructor(scene, car) {
     this.car = car;
@@ -95,6 +96,8 @@ export class ExhaustEffects {
     this.grains.count = count;
     this.grains.instanceMatrix.needsUpdate = true;
   }
+
+  setCar(car) { this.car = car; this.reset(); }
 
   reset() {
     this.pending = null;

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
-import { onTrack } from './track.js';
+import { track as defaultTrack } from './track.js';
 
 const random = (min, max) => min + Math.random() * (max - min);
 const clamp = (value) => Math.max(0, Math.min(1, value));
@@ -12,7 +12,8 @@ function particle() {
 // Two bounded pools and two draw calls: soft dust points + low-poly sand grains.
 // The wheel emitters read the gameplay model's actual transformed tire positions.
 export class WheelParticles {
-  constructor(scene, car) {
+  constructor(scene, car, course = defaultTrack) {
+    this.course = course;
     this.car = car;
     this.dust = Array.from({ length: CONFIG.particles.dustCapacity }, particle);
     this.sand = Array.from({ length: CONFIG.particles.sandCapacity }, particle);
@@ -82,6 +83,7 @@ export class WheelParticles {
   }
 
   emit(position, pose, vehicle, dirt) {
+    const asphalt = this.course.theme === 'neon' && dirt;
     const speed = vehicle.speed;
     const travelX = vehicle.vx / speed, travelZ = vehicle.vz / speed;
     const rightX = Math.cos(pose.heading), rightZ = Math.sin(pose.heading);
@@ -95,9 +97,9 @@ export class WheelParticles {
       vz: vehicle.vz * 0.08 - travelZ * 0.7 + rightZ * sideways,
       age: 0, life: random(0.8, 1.4), size: random(0.4, 0.65),
     });
-    puff.color.set(dirt ? '#d6bb8b' : '#a18d66');
+    puff.color.set(asphalt ? '#abb9cf' : this.course.theme === 'snow' ? '#eef9ff' : dirt ? '#d6bb8b' : '#a18d66');
     this.colors.setXYZ((this.dustCursor - 1) % this.dust.length, puff.color.r, puff.color.g, puff.color.b);
-    for (let i = 0; i < (dirt ? 3 : 2); i++) {
+    for (let i = 0; i < (asphalt ? 0 : dirt ? 3 : 2); i++) {
       const grain = this.sand[this.sandCursor++ % this.sand.length];
       const spray = random(-1.6, 1.6) - slip * 0.22;
       const kick = random(1.2, 2.4) + speed * 0.06;
@@ -108,7 +110,9 @@ export class WheelParticles {
         vz: vehicle.vz * 0.12 - travelZ * kick + rightZ * spray,
         age: 0, life: random(0.4, 0.8), size: random(0.025, 0.065),
       });
-      grain.color.set(dirt ? (Math.random() < 0.5 ? '#b89152' : '#dcc096') : '#877553');
+      grain.color.set(this.course.theme === 'snow'
+        ? (Math.random() < 0.5 ? '#ffffff' : '#c3dfef')
+        : dirt ? (Math.random() < 0.5 ? '#b89152' : '#dcc096') : '#877553');
     }
   }
 
@@ -118,9 +122,11 @@ export class WheelParticles {
     const slip = Math.abs(vehicle.vx * Math.cos(pose.heading) + vehicle.vz * Math.sin(pose.heading));
     if (active && speed > CONFIG.particles.minSpeed) {
       this.car.getWheelContacts().forEach((wheel, index) => {
-        const dirt = onTrack(wheel.contact.x, wheel.contact.z);
-        const rate = (4 + Math.min(speed, 37) * 0.65 + Math.min(slip, 12) * 3.5)
-          * (wheel.front ? 0.45 : 1) * (dirt ? 1 : 0.35);
+        const dirt = this.course.onTrack(wheel.contact.x, wheel.contact.z);
+        const wheelSpin = wheel.driven ? (vehicle.wheelSpin ?? 0) * 14 : 0;
+        const asphaltFactor = this.course.theme === 'neon' && dirt ? Math.min(1, Math.max(0, slip - 1) / 6 + wheelSpin / 14) : 1;
+        const rate = (4 + Math.min(speed, 37) * 0.65 + Math.min(slip, 12) * 3.5 + wheelSpin)
+          * (wheel.front ? 0.45 : 1) * (dirt ? 1 : 0.35) * asphaltFactor;
         this.emission[index] += rate * dt;
         while (this.emission[index] >= 1) {
           this.emit(wheel.contact, pose, vehicle, dirt);
@@ -172,6 +178,10 @@ export class WheelParticles {
     this.dustMaterial.uniforms.pointScale.value = window.innerHeight * Math.min(window.devicePixelRatio, 2)
       / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
   }
+
+  setCourse(course) { this.course = course; this.reset(); }
+
+  setCar(car) { this.car = car; this.reset(); }
 
   reset() {
     this.dust.forEach((puff) => { puff.life = 0; });
